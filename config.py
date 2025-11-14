@@ -92,6 +92,7 @@ STICKERS = [
     "CAACAgQAAyEFAASRNnxWAAI1CWjaYT-RNSP1Y2VM6vBqROBjrcvBAALlGwACOS-oUZNPjF5GnKbVHgQ"
 ]
 START_IMG_URL = "https://files.catbox.moe/x47u79.jpg"
+FAILED = "https://files.catbox.moe/6xpaz5.jpg"
 HELP_IMG_URL = "https://files.catbox.moe/x47u79.jpg"
 PING_IMG_URL = "https://files.catbox.moe/2wcsfs.jpg"
 PLAYLIST_IMG_URL = "https://files.catbox.moe/7keo5k.jpg"
