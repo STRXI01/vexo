@@ -50,9 +50,9 @@ async def start_pm(client, message: Message, _):
                 await app.send_message(
                     chat_id=config.LOGGER_ID,
                     text=(
-                        f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>sᴜᴅᴏʟɪsᴛ</b>.\n\n"
+                        f"<pre>{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>sᴜᴅᴏʟɪsᴛ</b>.\n\n"
                         f"<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n"
-                        f"<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}"
+                        f"<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}</pre>"
                     ),
                 )
             return
@@ -96,13 +96,13 @@ async def start_pm(client, message: Message, _):
                     await app.send_message(
                         chat_id=config.LOGGER_ID,
                         text=(
-                            f"{message.from_user.mention} ᴊᴜsᴛ sᴇᴀʀᴄʜᴇᴅ <b>ᴛʀᴀᴄᴋ ɪɴғᴏ</b>.\n\n"
+                            f"<pre>{message.from_user.mention} ᴊᴜsᴛ sᴇᴀʀᴄʜᴇᴅ <b>ᴛʀᴀᴄᴋ ɪɴғᴏ</b>.\n\n"
                             f"<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n"
-                            f"<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}"
+                            f"<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}</pre>"
                         ),
                     )
             except Exception as e:
-                await m.edit(f"❌ Failed to fetch info:\n<code>{e}</code>")
+                await m.edit(f"<pre><b>ꜰᴀɪʟᴇᴅ ᴛᴏ ꜰᴇᴛᴄʜ ɪɴꜰᴏ</b></pre>")
             return
 
     out = private_panel(_)
@@ -111,27 +111,17 @@ async def start_pm(client, message: Message, _):
     served_users = len(await get_served_users())
     UP, CPU, RAM, DISK = await bot_sys_stats()
 
-    await message.reply_video(
-        video=START_VID,
-        caption=_["start_2"].format(
-            message.from_user.mention,
-            app.mention,
-            UP,
-            DISK,
-            CPU,
-            RAM,
-            served_users,
-            served_chats,
-        ),
-        reply_markup=InlineKeyboardMarkup(out),
-    )
+    await message.reply(
+            text='<b>Hᴇʏ, 🧸</b>\n<b>I’ᴍ ᴠᴇxᴏ, ʏᴏᴜʀ ᴘᴏᴡᴇʀꜰᴜʟ ᴍᴜꜱɪᴄ ᴘʟᴀʏᴇʀ ʙᴏᴛ. ʙᴜɪʟᴛ ᴛᴏ ʙʀɪɴɢ ᴘᴏᴡᴇʀꜰᴜʟ ꜱᴏᴜɴᴅ, ꜱᴍᴏᴏᴛʜ ᴄᴏɴᴛʀᴏʟꜱ, ᴀɴᴅ ᴀɴ ᴇʟɪᴛᴇ ʟɪꜱᴛᴇɴɪɴɢ ᴇxᴘᴇʀɪᴇɴᴄᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘꜱ.</b>\n\n<b><a href="https://files.catbox.moe/kkqjjc.mp4">✨</a> ᴡʜᴀᴛ ɪ ᴅᴏ:\n• ᴘʟᴀʏ ʜɪɢʜ-Qᴜᴀʟɪᴛʏ ᴍᴜꜱɪᴄ\n• ꜰᴀꜱᴛ ᴄᴏɴᴛʀᴏʟꜱ & ᴄʟᴇᴀɴ ᴘᴇʀꜰᴏʀᴍᴀɴᴄᴇ\n• ᴄᴏᴏʟ ꜰᴇᴀᴛᴜʀᴇꜱ ꜰᴏʀ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴠɪʙᴇꜱ</b>\n\n<b>📚 ɴᴇᴇᴅ ʜᴇʟᴘ?\nᴛᴀᴘ ʜᴇʟᴘ ᴛᴏ ꜱᴇᴇ ᴀʟʟ ᴍʏ ᴄᴏᴍᴍᴀɴᴅꜱ.</b>',
+            reply_markup=InlineKeyboardMarkup(out),
+        )
     if await is_on_off(3):
         await app.send_message(
             chat_id=config.LOGGER_ID,
             text=(
-                f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ.\n\n"
+                f"<pre><b>{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ.\n\n"
                 f"<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n"
-                f"<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}"
+                f"<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}</pre></b>"
             ),
         )
 
