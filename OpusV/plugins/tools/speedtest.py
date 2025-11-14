@@ -2,6 +2,7 @@ import asyncio
 import speedtest
 from pyrogram import filters
 from pyrogram.types import Message
+from speedtest import ConfigRetrievalError, Speedtest
 
 from OpusV import app
 from OpusV.misc import SUDOERS
