@@ -112,7 +112,7 @@ async def start_pm(client, message: Message, _):
     UP, CPU, RAM, DISK = await bot_sys_stats()
 
     await message.reply(
-            text='<pre><b>Hᴇʏ, 🧸</b></pre>\n<b>I’ᴍ ᴠᴇxᴏ, ʏᴏᴜʀ ᴘᴏᴡᴇʀꜰᴜʟ ᴍᴜꜱɪᴄ ᴘʟᴀʏᴇʀ ʙᴏᴛ. ʙᴜɪʟᴛ ᴛᴏ ʙʀɪɴɢ ᴘᴏᴡᴇʀꜰᴜʟ ꜱᴏᴜɴᴅ, ꜱᴍᴏᴏᴛʜ ᴄᴏɴᴛʀᴏʟꜱ, ᴀɴᴅ ᴀɴ ᴇʟɪᴛᴇ ʟɪꜱᴛᴇɴɪɴɢ ᴇxᴘᴇʀɪᴇɴᴄᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘꜱ.</b></blockquote>\n<b><blockquote><a href="https://files.catbox.moe/kkqjjc.mp4">✨</a> ᴡʜᴀᴛ ɪ ᴅᴏ:\n• ᴘʟᴀʏ ʜɪɢʜ-Qᴜᴀʟɪᴛʏ ᴍᴜꜱɪᴄ\n• ꜰᴀꜱᴛ ᴄᴏɴᴛʀᴏʟꜱ & ᴄʟᴇᴀɴ ᴘᴇʀꜰᴏʀᴍᴀɴᴄᴇ\n• ᴄᴏᴏʟ ꜰᴇᴀᴛᴜʀᴇꜱ ꜰᴏʀ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴠɪʙᴇꜱ</blockquote></b>\n<blockquote><b>📚 ɴᴇᴇᴅ ʜᴇʟᴘ?\nᴛᴀᴘ ʜᴇʟᴘ ᴛᴏ ꜱᴇᴇ ᴀʟʟ ᴍʏ ᴄᴏᴍᴍᴀɴᴅꜱ.</b></blockquote>',
+            text='<blockquote><b>Hᴇʏ, 🧸</b>\n<b>I’ᴍ ᴠᴇxᴏ, ʏᴏᴜʀ ᴘᴏᴡᴇʀꜰᴜʟ ᴍᴜꜱɪᴄ ᴘʟᴀʏᴇʀ ʙᴏᴛ. ʙᴜɪʟᴛ ᴛᴏ ʙʀɪɴɢ ᴘᴏᴡᴇʀꜰᴜʟ ꜱᴏᴜɴᴅ, ꜱᴍᴏᴏᴛʜ ᴄᴏɴᴛʀᴏʟꜱ, ᴀɴᴅ ᴀɴ ᴇʟɪᴛᴇ ʟɪꜱᴛᴇɴɪɴɢ ᴇxᴘᴇʀɪᴇɴᴄᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘꜱ.</b></blockquote>\n<b><blockquote><a href="https://files.catbox.moe/kkqjjc.mp4">✨</a> ᴡʜᴀᴛ ɪ ᴅᴏ:\n• ᴘʟᴀʏ ʜɪɢʜ-Qᴜᴀʟɪᴛʏ ᴍᴜꜱɪᴄ\n• ꜰᴀꜱᴛ ᴄᴏɴᴛʀᴏʟꜱ & ᴄʟᴇᴀɴ ᴘᴇʀꜰᴏʀᴍᴀɴᴄᴇ\n• ᴄᴏᴏʟ ꜰᴇᴀᴛᴜʀᴇꜱ ꜰᴏʀ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴠɪʙᴇꜱ</blockquote></b>\n<blockquote><b>📚 ɴᴇᴇᴅ ʜᴇʟᴘ?\nᴛᴀᴘ ʜᴇʟᴘ ᴛᴏ ꜱᴇᴇ ᴀʟʟ ᴍʏ ᴄᴏᴍᴍᴀɴᴅꜱ.</b></blockquote>',
             reply_markup=InlineKeyboardMarkup(out),
         )
     if await is_on_off(3):
