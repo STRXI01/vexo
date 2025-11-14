@@ -114,6 +114,7 @@ async def start_pm(client, message: Message, _):
     await message.reply(
             text='<b>Hᴇʏ, 🧸</b>\n<b>I’ᴍ ᴠᴇxᴏ, ʏᴏᴜʀ ᴘᴏᴡᴇʀꜰᴜʟ ᴍᴜꜱɪᴄ ᴘʟᴀʏᴇʀ ʙᴏᴛ. ʙᴜɪʟᴛ ᴛᴏ ʙʀɪɴɢ ᴘᴏᴡᴇʀꜰᴜʟ ꜱᴏᴜɴᴅ, ꜱᴍᴏᴏᴛʜ ᴄᴏɴᴛʀᴏʟꜱ, ᴀɴᴅ ᴀɴ ᴇʟɪᴛᴇ ʟɪꜱᴛᴇɴɪɴɢ ᴇxᴘᴇʀɪᴇɴᴄᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘꜱ.</b>\n\n<b><a href="https://files.catbox.moe/kkqjjc.mp4">✨</a> ᴡʜᴀᴛ ɪ ᴅᴏ:\n• ᴘʟᴀʏ ʜɪɢʜ-Qᴜᴀʟɪᴛʏ ᴍᴜꜱɪᴄ\n• ꜰᴀꜱᴛ ᴄᴏɴᴛʀᴏʟꜱ & ᴄʟᴇᴀɴ ᴘᴇʀꜰᴏʀᴍᴀɴᴄᴇ\n• ᴄᴏᴏʟ ꜰᴇᴀᴛᴜʀᴇꜱ ꜰᴏʀ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴠɪʙᴇꜱ</b>\n\n<b>📚 ɴᴇᴇᴅ ʜᴇʟᴘ?\nᴛᴀᴘ ʜᴇʟᴘ ᴛᴏ ꜱᴇᴇ ᴀʟʟ ᴍʏ ᴄᴏᴍᴍᴀɴᴅꜱ.</b>',
             reply_markup=InlineKeyboardMarkup(out),
+            disable_web_page_preview=True, 
         )
     if await is_on_off(3):
         await app.send_message(
