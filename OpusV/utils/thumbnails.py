@@ -1,45 +1,160 @@
 import os
 import re
-import textwrap
-import numpy as np
 import aiofiles
 import aiohttp
-from PIL import (
-    Image,
-    ImageDraw,
-    ImageEnhance,
-    ImageFilter,
-    ImageFont,
-)
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageEnhance, ImageFilter
 from youtubesearchpython.__future__ import VideosSearch
-from config import YOUTUBE_IMG_URL
+from config import FAILED
 
+APPLE_TEMPLATE_PATH = "OpusV/assets/apple_music.png"
 
-def changeImageSize(maxWidth, maxHeight, image):
-    widthRatio = maxWidth / image.size[0]
-    heightRatio = maxHeight / image.size[1]
-    ratio = min(widthRatio, heightRatio)
-    newWidth = int(image.size[0] * ratio)
-    newHeight = int(image.size[1] * ratio)
+def _resample_lanczos():
     try:
-        resample = Image.Resampling.LANCZOS
+        return Image.Resampling.LANCZOS
     except AttributeError:
-        resample = Image.ANTIALIAS
-    return image.resize((newWidth, newHeight), resample)
+        return Image.ANTIALIAS
 
+def safe_font(path, size):
+    try:
+        return ImageFont.truetype(path, size)
+    except Exception:
+        return ImageFont.load_default()
 
-def get_dominant_color(image):
-    image = image.convert('RGB').resize((50, 50))
-    pixels = np.array(image).reshape(-1, 3)
-    avg_color = tuple(pixels.mean(axis=0).astype(int))
-    if sum(avg_color) < 200:
-        return tuple(min(255, int(c * 1.5)) for c in avg_color)
-    return avg_color
+def _most_common_colors(pil_img, n=3, resize=(64, 64)):
+    im = pil_img.convert("RGB").resize(resize)
+    arr = np.array(im).reshape(-1, 3)
+    quant = (arr >> 3) << 3
+    tuples = [tuple(c) for c in quant.tolist()]
+    unique, counts = np.unique(tuples, axis=0, return_counts=True)
+    idx = np.argsort(counts)[::-1]
+    colors = [tuple(map(int, unique[i])) for i in idx[:n]]
+    return colors or [(120, 120, 120)]
 
 def get_contrasting_color(bg_color):
-    luminance = (0.299 * bg_color[0] + 0.587 * bg_color[1] + 0.114 * bg_color[2])
-    return (255, 255, 255) if luminance < 128 else (50, 50, 50)
+    lum = 0.299 * bg_color[0] + 0.587 * bg_color[1] + 0.114 * bg_color[2]
+    return (30, 30, 30) if lum > 128 else (245, 245, 245)
 
+def _detect_panel_bounds(img_rgba):
+    W, H = img_rgba.size
+    gray = img_rgba.convert("L")
+    arr = np.array(gray)
+
+    thr = int(np.percentile(arr, 90))
+    mask = (arr >= thr).astype(np.uint8)
+
+    y0 = int(H * 0.25)
+    y1 = int(H * 0.75)
+    band = mask[y0:y1, :]
+
+    visited = np.zeros_like(band, dtype=np.uint8)
+    best = None
+    h, w = band.shape
+
+    def neighbors(r, c):
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            rr, cc = r + dr, c + dc
+            if 0 <= rr < h and 0 <= cc < w:
+                yield rr, cc
+
+    for r in range(h):
+        for c in range(w):
+            if band[r, c] and not visited[r, c]:
+                stack = [(r, c)]
+                visited[r, c] = 1
+                min_r = max_r = r
+                min_c = max_c = c
+                area = 0
+                while stack:
+                    rr, cc = stack.pop()
+                    area += 1
+                    min_r = min(min_r, rr)
+                    max_r = max(max_r, rr)
+                    min_c = min(min_c, cc)
+                    max_c = max(max_c, cc)
+                    for nr, nc in neighbors(rr, cc):
+                        if band[nr, nc] and not visited[nr, nc]:
+                            visited[nr, nc] = 1
+                            stack.append((nr, nc))
+                comp_x_center = (min_c + max_c) / 2
+                if best is None or (area > best[0] and comp_x_center > w * 0.5):
+                    X0, X1 = min_c, max_c
+                    Y0, Y1 = y0 + min_r, y0 + max_r
+                    best = (area, X0, X1, Y0, Y1)
+
+    if best is None:
+        panel_w = int(W * 0.68)
+        panel_h = int(H * 0.36)
+        panel_x0 = (W - panel_w) // 2
+        panel_x1 = panel_x0 + panel_w
+        panel_y0 = (H - panel_h) // 2
+        panel_y1 = panel_y0 + panel_h
+        return panel_x0, panel_x1, panel_y0, panel_y1
+
+    _, px0, px1, py0, py1 = best
+    pad_y = int(H * 0.05)
+    py0 = max(0, py0 - pad_y)
+    py1 = min(H - 1, py1 + pad_y)
+    return px0, px1, py0, py1
+
+def _detect_left_card_bounds(img_rgba):
+    W, H = img_rgba.size
+    gray = img_rgba.convert("L")
+    arr = np.array(gray)
+
+    x_band = int(W * 0.28)
+    sub = arr[:, :x_band]
+
+    thr = int(np.percentile(sub, 88))
+    mask = (sub >= thr).astype(np.uint8)
+
+    visited = np.zeros_like(mask, dtype=np.uint8)
+    best = None
+    h, w = mask.shape
+
+    def neighbors(r, c):
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            rr, cc = r + dr, c + dc
+            if 0 <= rr < h and 0 <= cc < w:
+                yield rr, cc
+
+    for r in range(h):
+        for c in range(w):
+            if mask[r, c] and not visited[r, c]:
+                stack = [(r, c)]
+                visited[r, c] = 1
+                min_r = max_r = r
+                min_c = max_c = c
+                area = 0
+                while stack:
+                    rr, cc = stack.pop()
+                    area += 1
+                    min_r = min(min_r, rr)
+                    max_r = max(max_r, rr)
+                    min_c = min(min_c, c)
+                    max_c = max(max_c, c)
+                    for nr, nc in neighbors(rr, cc):
+                        if mask[nr, nc] and not visited[nr, nc]:
+                            visited[nr, nc] = 1
+                            stack.append((nr, nc))
+                comp_h = max_r - min_r + 1
+                comp_w = max_c - min_c + 1
+                if comp_h > comp_w and (best is None or area > best[0]):
+                    X0, X1 = min_c, max_c
+                    Y0, Y1 = min_r, max_r
+                    best = (area, X0, X1, Y0, Y1)
+
+    if best is None:
+        card_w = int(W * 0.08)
+        card_h = int(H * 0.36)
+        x0 = int(W * 0.04)
+        x1 = x0 + card_w
+        y0 = (H - card_h) // 2
+        y1 = y0 + card_h
+        return x0, x1, y0, y1
+
+    _, lx0, lx1, ly0, ly1 = best
+    return lx0, lx1, ly0, ly1
 
 async def get_thumb(videoid):
     final_path = f"cache/{videoid}.png"
@@ -47,144 +162,169 @@ async def get_thumb(videoid):
         return final_path
 
     url = f"https://www.youtube.com/watch?v={videoid}"
-    try:
-        results = VideosSearch(url, limit=1)
-        result_data = await results.next()
-        if not result_data.get("result"):
-            return YOUTUBE_IMG_URL
 
-        result = result_data["result"][0]
-        title = re.sub(r"\W+", " ", result.get("title", "Unknown Title")).title()
-        duration = result.get("duration", "00:00")
-        thumbnail_url = result["thumbnails"][0]["url"].split("?")[0]
-        views = result.get("viewCount", {}).get("short", "0 views")
-        channel = result.get("channel", {}).get("name", "Unknown Channel")
+    try:
+        search = VideosSearch(url, limit=1)
+        try:
+            results = await search.next()
+        except TypeError:
+            results = search.result()
+        if not results or "result" not in results or not results["result"]:
+            return FAILED
+
+        r0 = results["result"][0]
+        title = re.sub(r"\s+", " ", r0.get("title", "Unknown Title")).strip()
+        channel = r0.get("channel", {})
+        if isinstance(channel, dict):
+            channel = channel.get("name", "Youtube")
+        elif not channel:
+            channel = "Youtube"
+
+        thumb_field = r0.get("thumbnails") or r0.get("thumbnail") or []
+        if isinstance(thumb_field, list) and thumb_field and isinstance(thumb_field[0], dict):
+            thumbnail_url = (thumb_field[0].get("url") or "").split("?")[0]
+        elif isinstance(thumb_field, dict):
+            thumbnail_url = (thumb_field.get("url") or "").split("?")[0]
+        else:
+            thumbnail_url = str(thumb_field).split("?")[0] if thumb_field else ""
+        if not thumbnail_url:
+            return FAILED
 
         os.makedirs("cache", exist_ok=True)
-        thumb_path = f"cache/thumb{videoid}.png"
+        raw_path = f"cache/raw_{videoid}.jpg"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(thumbnail_url) as resp:
-                async with aiofiles.open(thumb_path, "wb") as f:
+                if resp.status != 200:
+                    return FAILED
+                async with aiofiles.open(raw_path, "wb") as f:
                     await f.write(await resp.read())
 
-        try:
-            youtube = Image.open(thumb_path)
-        except:
-            os.remove(thumb_path) if os.path.exists(thumb_path) else None
-            return YOUTUBE_IMG_URL
+        if not os.path.exists(APPLE_TEMPLATE_PATH):
+            return FAILED
 
-        # Dominant color
-        bar_color = get_dominant_color(youtube)
-        contrast_color = get_contrasting_color(bar_color)
+        base = Image.open(APPLE_TEMPLATE_PATH).convert("RGBA")
+        W, H = base.size
+        draw = ImageDraw.Draw(base)
 
-        # --- Background setup ---
-        bg = changeImageSize(1280, 720, youtube.copy()).convert("RGBA")
-        bg = bg.filter(ImageFilter.BoxBlur(22))  # stronger blur for deeper feel
-        bg = ImageEnhance.Brightness(bg).enhance(0.55)  # darker overall tone
-        bg = ImageEnhance.Color(bg).enhance(0.8)  # desaturate slightly for cinematic look
+        panel_x0, panel_x1, panel_y0, panel_y1 = _detect_panel_bounds(base)
+        lx0, lx1, ly0, ly1 = _detect_left_card_bounds(base)
+        left_card_h = (ly1 - ly0 + 1)
 
-        # Black overlay to deepen the mix
-        dark_overlay = Image.new("RGBA", bg.size, (0, 0, 0, 120))
-        bg = Image.alpha_composite(bg, dark_overlay)
+        GAP = 8
+        RADIUS = max(12, left_card_h // 8)
+        album_h = int(left_card_h * 1.10)
+        album_w = album_h
 
-        # --- Bottom gradient (to keep lower text visible) ---
-        gradient = Image.new("L", (1, bg.height))
-        for y in range(bg.height):
-            gradient.putpixel((0, y), int(255 * (y / bg.height)))
-        alpha = gradient.resize(bg.size)
-        overlay = Image.new("RGBA", bg.size, (0, 0, 0, 130))
-        bg = Image.composite(overlay, bg, alpha)
+        album_x = lx0 - 7
+        album_y = ly0 - int((album_h - left_card_h) / 2)
+        album_x = max(2, min(album_x, W - album_w - 2))
+        album_y = max(2, min(album_y, H - album_h - 2))
 
-        # --- Center thumbnail (v2 enhanced) ---
-        center_thumb = changeImageSize(940, 420, youtube.copy()).convert("RGBA")
-        thumb_pos = ((bg.width - center_thumb.width) // 2, 90)  # perfectly centered horizontally
+        src = Image.open(raw_path).convert("RGBA")
+        src = ImageEnhance.Color(src).enhance(2.0)
+        cover = ImageOps.fit(src, (album_w, album_h), method=_resample_lanczos(), centering=(0.5, 0.5))
 
-        # Slight enhancement for crisp look
-        enhancer_brightness = ImageEnhance.Brightness(center_thumb).enhance(1.15)
-        enhancer_contrast = ImageEnhance.Contrast(enhancer_brightness).enhance(1.25)
-        center_thumb = enhancer_contrast
+        mask = Image.new("L", (album_w, album_h), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, album_w, album_h), radius=RADIUS, fill=255)
+        cover.putalpha(mask)
 
-        # --- Enhanced soft glow around thumbnail ---
-        glow_layer = Image.new("RGBA", bg.size, (0, 0, 0, 0))
-        glow_size = (center_thumb.width + 90, center_thumb.height + 90)
-        glow = Image.new("RGBA", glow_size, (255, 255, 255, 70))
-        glow = glow.filter(ImageFilter.GaussianBlur(38))
-        glow_pos = (thumb_pos[0] - 45, thumb_pos[1] - 45)
-        glow_layer.paste(glow, glow_pos, glow)
-        bg = Image.alpha_composite(bg, glow_layer)
+        shadow = Image.new("RGBA", (album_w + 40, album_h + 40), (0, 0, 0, 0))
+        shadow_mask = Image.new("L", (album_w + 40, album_h + 40), 0)
+        draw_mask = ImageDraw.Draw(shadow_mask)
+        draw_mask.rounded_rectangle(
+            (20, 20, album_w + 20, album_h + 20),
+            radius=RADIUS,
+            fill=180
+        )
+        shadow_mask = shadow_mask.filter(ImageFilter.GaussianBlur(10))
+        shadow.putalpha(shadow_mask)
+        base.paste(shadow, (album_x - 20, album_y - 20), shadow)
 
-        # --- Masked rounded rectangle for thumbnail ---
-        mask = Image.new("L", center_thumb.size, 0)
-        draw_mask = ImageDraw.Draw(mask)
-        draw_mask.rounded_rectangle([0, 0, center_thumb.width, center_thumb.height], radius=40, fill=255)
-        bg.paste(center_thumb, thumb_pos, mask)
+        base.paste(cover, (album_x, album_y), cover)
 
-        # --- Font loaders ---
-        def safe_font(path, size):
-            try:
-                return ImageFont.truetype(path, size)
-            except:
-                return ImageFont.load_default()
+        palette = _most_common_colors(cover)
+        fg = (0, 0, 0)
+        muted = (120, 120, 120)
 
-        font_title = safe_font("OpusV/resources/font.ttf", 32)
-        font_small = safe_font("OpusV/resources/font2.ttf", 28)
-        font_brand = safe_font("OpusV/resources/font.ttf", 40)
+        title_font_path = "OpusV/assets/font.ttf"
+        meta_font = safe_font("OpusV/assets/font2.ttf", 22)
+        small_font = safe_font("OpusV/assets/font.ttf", 22)
 
-        draw = ImageDraw.Draw(bg)
+        INNER_PAD = 36
+        text_x = max(panel_x0 + INNER_PAD, album_x + album_w + GAP)
+        text_right = panel_x1 - INNER_PAD
+        text_w = max(1, text_right - text_x)
+        text_top = panel_y0 + 40
 
-        # --- Vertical progress bar ---
-        bar_width = 15
-        bar_height = center_thumb.height
-        bar_radius = 12
-        bar_x = thumb_pos[0] - 60
-        bar_y = thumb_pos[1]
+        def shrink_to_fit_one_line(s, start_px, min_px, max_w):
+            size = start_px
+            while size >= min_px:
+                f = safe_font(title_font_path, size)
+                w = draw.textbbox((0, 0), s, font=f)[2]
+                if w <= max_w:
+                    return f
+                size -= 1
+            return safe_font(title_font_path, min_px)
 
-        # Bar background
+        def ellipsize_one_line(s, font, max_w):
+            if not s:
+                return s
+            bbox = draw.textbbox((0, 0), s, font=font)
+            if (bbox[2] - bbox[0]) <= max_w:
+                return s
+            lo, hi = 1, len(s)
+            best = "…"
+            while lo <= hi:
+                mid = (lo + hi) // 2
+                cand = s[:mid].rstrip() + "…"
+                w = draw.textbbox((0, 0), cand, font=font)[2]
+                if w <= max_w:
+                    best = cand
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+            return best
+
+        desired_start = 36
+        title_font = shrink_to_fit_one_line(title, desired_start, 24, text_w)
+        title_draw = title
+        if draw.textbbox((0, 0), title_draw, font=title_font)[2] > text_w:
+            title_draw = ellipsize_one_line(title, title_font, text_w)
+
+        draw.text((text_x, text_top), title_draw, fill=fg, font=title_font)
+        tb = draw.textbbox((text_x, text_top), title_draw, font=title_font)
+        cursor_y = tb[3] + 4
+
+        draw.text((text_x, cursor_y), channel, fill=muted, font=meta_font)
+        cb = draw.textbbox((text_x, cursor_y), channel, font=meta_font)
+        cursor_y = cb[3] + 28
+
+        bar_h = 6
+        bar_bottom_margin = 70
+        bar_y0 = min(cursor_y, panel_y1 - bar_bottom_margin)
+        bar_x0 = text_x
+        bar_x1 = text_right
+
+        draw.rounded_rectangle((bar_x0, bar_y0, bar_x1, bar_y0 + bar_h), radius=3, fill=(220, 220, 220))
+        progress = 0.4
         draw.rounded_rectangle(
-            [bar_x, bar_y, bar_x + bar_width, bar_y + bar_height],
-            radius=bar_radius,
-            fill=(100, 100, 100, 150)
+            (bar_x0, bar_y0, bar_x0 + int((bar_x1 - bar_x0) * progress), bar_y0 + bar_h),
+            radius=3,
+            fill=palette[0],
         )
 
-        # Played portion
-        played_ratio = 0.25  # Example static
-        fill_height = int(bar_height * played_ratio)
-        draw.rounded_rectangle(
-            [bar_x, bar_y + bar_height - fill_height, bar_x + bar_width, bar_y + bar_height],
-            radius=bar_radius,
-            fill=bar_color
-        )
+        out = base.convert("RGB")
+        os.makedirs("cache", exist_ok=True)
+        out.save(final_path, "PNG")
 
-        # --- Duration texts (adjusted further apart) ---
-        draw.text((bar_x - 50, bar_y - 40), duration[:23], fill="white", font=font_small)  # total duration higher
-        draw.text((bar_x - 50, bar_y + bar_height + 10), "00:25", fill="white", font=font_small)  # ongoing lower
-
-        # --- Text below thumbnail ---
-        text_left = thumb_pos[0]
-        text_top = thumb_pos[1] + center_thumb.height + 15
-        title_short = textwrap.shorten(title, width=50, placeholder="...")
-        draw.text((text_left, text_top), title_short, fill="white", font=font_title, stroke_width=1, stroke_fill="black")
-        draw.text((text_left, text_top + 40), f"{channel} | {views[:23]}", fill="white", font=font_small, stroke_width=1, stroke_fill="black")
-
-        # --- Branding (closer but not overlapping) ---
-        rec_text = "Kawai Heals"
-        rec_bbox = draw.textbbox((0, 0), rec_text, font=font_brand)
-        rec_w = rec_bbox[2] - rec_bbox[0]
-        rec_h = rec_bbox[3] - rec_bbox[1]
-        rec_x = thumb_pos[0] + center_thumb.width + 35  # moved closer but safe gap
-        rec_y = thumb_pos[1] + (center_thumb.height // 2) - (rec_h // 2)
-        draw.text((rec_x, rec_y), rec_text, fill="white", font=font_brand)
-
-        # Clean temp
         try:
-            os.remove(thumb_path)
-        except:
+            os.remove(raw_path)
+        except Exception:
             pass
 
-        bg.save(final_path, format="PNG")
         return final_path
 
     except Exception as e:
-        print("Thumb error:", e)
-        return YOUTUBE_IMG_URL
+        print(f"[get_thumb error] {e}")
+        return FAILED
