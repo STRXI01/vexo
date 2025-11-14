@@ -184,8 +184,8 @@ queue_6 : "<b>🕚 ᴅᴜʀᴀᴛɪᴏɴ :</b> ᴜɴᴋɴᴏᴡɴ ᴅᴜʀᴀᴛ
 queue_7 : "\nᴄʟɪᴄᴋ ᴏɴ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴛᴏ ɢᴇᴛ ᴡʜᴏʟᴇ ǫᴜᴇᴜᴇᴅ ʟɪsᴛ."
 queue_8 : "<b>{0} ᴘʟᴀʏᴇʀ</b>\n\n🎄 <b>sᴛʀᴇᴀᴍɪɴɢ :</b> {1}\n\n🔗 <b>sᴛʀᴇᴀᴍ ᴛʏᴘᴇ :</b> {2}\n🥀 <b>ʀᴇǫᴜᴇsᴛᴇᴅ ʙʏ :</b> {3}\n{4}"
 
-stream_1 : "<pre><b>◥  Sᴏᴜɴᴅ Ɛɴɢᴀɢᴇᴅ ┊ {2}  ◤</b></pre>"
-stream_2 : "Streaming started.\n<blockquote>Played by: {0}</blockquote>\nType: Live stream [URL]"
+stream_1 : "<pre><b>◥   Sᴏᴜɴᴅ Ɛɴɢᴀɢᴇᴅ ┊ {2}   ◤</b></pre>"
+stream_2 : "<pre><b>Sᴛᴀʀᴛᴇᴅ Sᴛʀᴇᴀᴍɪɴɢ</b>\n\n➖➖➖➖➖➖➖➖➖➖➖\n<b>• Sᴛʀᴇᴀᴍ ᴛʏᴘᴇ :</b> ʟɪᴠᴇ sᴛʀᴇᴀᴍ [ᴜʀʟ]</pre>"
 
 S_B_1 : "ᴀᴅᴅ ᴍᴇ 🍁"
 S_B_2 : "ᴜᴘᴅᴀᴛᴇꜱ ❄️"
